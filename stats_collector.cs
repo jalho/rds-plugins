@@ -16,6 +16,9 @@ class StatsAccumulationEvent {
     public ulong subject_id { get; set; } // e.g. 76561198135242017 (ID of the other player associated in the event)
 }
 
+/* For reference implementation, see Statistics DB by misticos
+   https://umod.org/plugins/statistics-db */
+
 namespace Carbon.Plugins {
     [Info ( "stats_collector", "<jalho>", "0.1.0" )]
     [Description ( "Collect stats about player activity." )]
