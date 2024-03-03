@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 using System.Timers;
 
 class StatsAccumulationEvent {
-    public long timestamp { get; set; }   // e.g. 1709489791
-    public string type { get; set; }      // e.g. "farming" | "pvp"
-    public string resource { get; set; }  // e.g. "wood" (type "farming")
-    public int amount { get; set; }       // e.g. 10 (type "farming)
-    public ulong subject_id { get; set; } // e.g. 76561198135242017 (type "pvp" -- Steam ID of a player killed in PvP)
+    public long timestamp { get; set; }   // e.g. 1709489791 (Unix timestamp in seconds, UTC)
+    public string type { get; set; }      // e.g. "farming" | "pvp" | "pve"
+    public string resource { get; set; }  // e.g. "wood" (the resource that was farmed)
+    public int amount { get; set; }       // e.g. 10 (amount of wood farmed)
+    public ulong subject_id { get; set; } // e.g. 76561198135242017 (ID of the other player associated in the event)
 }
 
 namespace Carbon.Plugins {
@@ -70,6 +70,51 @@ namespace Carbon.Plugins {
             string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
             var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
             player_lines.Add(gather_event_serialized);
+        }
+
+        /**
+         * Hook called when a player gets killed.
+         */
+        object OnPlayerDeath(BasePlayer killed_player, HitInfo killer_info) {
+            bool is_pvp = killer_info?.InitiatorPlayer?.userID is ulong;
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            string category = is_pvp ? "pvp" : "pve";
+
+            // PvE death event only
+            if (!is_pvp) {
+                StatsAccumulationEvent pve_death_event = new StatsAccumulationEvent {
+                    timestamp = timestamp,
+                    type = "pve-death",
+                    subject_id = killed_player.userID,
+                };
+                string pve_death_event_serialized = JsonConvert.SerializeObject(pve_death_event);
+                var player_lines = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
+                player_lines.Add(pve_death_event_serialized);
+                return (object) null;
+            } else {
+                // PvP kill event for killer player
+                StatsAccumulationEvent pvp_kill_event = new StatsAccumulationEvent {
+                    timestamp = timestamp,
+                    type = "pvp-kill",
+                    subject_id = killed_player.userID,
+                };
+                string pvp_kill_event_serialized = JsonConvert.SerializeObject(pvp_kill_event);
+                var lines_killer = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
+                lines_killer.Add(pvp_kill_event_serialized);
+
+                // PvP death event for killed player
+                StatsAccumulationEvent pvp_death_event = new StatsAccumulationEvent {
+                    timestamp = timestamp,
+                    type = "pvp-death",
+                    subject_id = killer_info.InitiatorPlayer.userID,
+                };
+                string pvp_death_event_serialized = JsonConvert.SerializeObject(pvp_death_event);
+                var lines_killed = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
+                lines_killed.Add(pvp_death_event_serialized);
+
+                return (object) null;
+            }
+
         }
 
         void Unload() {
