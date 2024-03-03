@@ -1,0 +1,34 @@
+using System;
+using System.Reflection;
+
+namespace Carbon.Plugins
+{
+    [Info ( "helloworld", "<jalho>", "0.1.0" )]
+    [Description ( "My first plugin" )]
+    public class helloworld : CarbonPlugin
+    {
+        /*
+         * A hook: Something that Carbon calls when specific thing is detected
+         * to have happened in the game.
+         *
+         * Docs for this specific hook:
+         * - https://docs.carbonmod.gg/docs/core/hooks/entity
+         */
+        void OnEntitySpawn(BaseNetworkable networkable)
+        {
+            this.inspect_object(networkable);
+        }
+
+        /*
+         * A private method made by us, to do whatever!
+         *
+         * Docs for the .NET API used here:
+         * - https://learn.microsoft.com/en-us/dotnet/api/system.type.fullname?view=net-8.0#system-type-fullname
+         */
+        private void inspect_object(object inspectable)
+        {
+            Type inspectableType = inspectable.GetType();
+            Console.WriteLine($"FullName: {inspectableType.FullName}");
+        }
+    }
+}
