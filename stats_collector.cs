@@ -10,7 +10,7 @@ using System.Timers;
 
 class StatsAccumulationEvent {
     public long timestamp { get; set; }   // e.g. 1709489791 (Unix timestamp in seconds, UTC)
-    public string type { get; set; }      // e.g. "farming" | "pvp" | "pve"
+    public string type { get; set; }      // e.g. "farming" or some PvP/PvE categorization key
     public string resource { get; set; }  // e.g. "wood" (the resource that was farmed)
     public int amount { get; set; }       // e.g. 10 (amount of wood farmed)
     public ulong subject_id { get; set; } // e.g. 76561198135242017 (ID of the other player associated in the event)
@@ -115,6 +115,28 @@ namespace Carbon.Plugins {
                 return (object) null;
             }
 
+        }
+
+        object OnGrowableGather(GrowableEntity growable_entity) {
+            Puts("OnGrowableGather was called!");
+            return (object) null;
+        }
+
+        /**
+         * Hook called e.g. when a player picks up a mushroom or a stump (wood).
+         */
+        object OnCollectiblePickup(CollectibleEntity collectible, BasePlayer player, bool eat) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            StatsAccumulationEvent collect_event = new StatsAccumulationEvent {
+                timestamp = timestamp,
+                type = "collecting",
+                resource = collectible.name,
+                amount = 1,
+            };
+            string collect_event_serialized = JsonConvert.SerializeObject(collect_event);
+            var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
+            player_lines.Add(collect_event_serialized);
+            return (object) null;
         }
 
         void Unload() {
