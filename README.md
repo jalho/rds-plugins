@@ -3,6 +3,7 @@
 ```cs
 using System;
 using System.Reflection;
+using System.Text;
 
 namespace Carbon.Plugins
 {
@@ -30,8 +31,14 @@ namespace Carbon.Plugins
          */
         private void inspect_object(object inspectable)
         {
-            Type inspectableType = inspectable.GetType();
-            Console.WriteLine($"FullName: {inspectableType.FullName}");
+            Type inspectable_type = inspectable.GetType();
+            PropertyInfo[] properties = inspectable_type.GetProperties();
+            StringBuilder property_names = new StringBuilder();
+            foreach (PropertyInfo property in properties)
+            {
+                property_names.Append(property.Name + "\n\t");
+            }
+            Console.WriteLine($"FullName: '{inspectable_type.FullName}', Property Names:\n\t{property_names}");
         }
     }
 }
