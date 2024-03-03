@@ -8,10 +8,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-class GatherEvent {
-    public long timestamp { get; set; }  // e.g. 1709489791
-    public string resource { get; set; } // e.g. "wood"
-    public int amount { get; set; }      // e.g. 10
+class StatsAccumulationEvent {
+    public string type { get; set; }      // e.g. "farming" | "pvp"
+    public long timestamp { get; set; }   // e.g. 1709489791
+    public string resource { get; set; }  // e.g. "wood" (type "farming")
+    public int amount { get; set; }       // e.g. 10 (type "farming)
+    public ulong subject_id { get; set; } // e.g. 76561198135242017 (type "pvp" -- Steam ID of a player killed in PvP)
 }
 
 namespace Carbon.Plugins {
@@ -39,7 +41,8 @@ namespace Carbon.Plugins {
 
         object OnDispenserGather(ResourceDispenser resource_dispenser, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            GatherEvent gather_event = new GatherEvent {
+            StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
+                type = "farming",
                 timestamp = timestamp,
                 resource = item.info.shortname,
                 amount = item.amount,
@@ -58,7 +61,8 @@ namespace Carbon.Plugins {
          */
         void OnDispenserBonus(ResourceDispenser resource_dispencer, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            GatherEvent gather_event = new GatherEvent {
+            StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
+                type = "farming",
                 timestamp = timestamp,
                 resource = item.info.shortname,
                 amount = item.amount,
