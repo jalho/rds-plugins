@@ -8,12 +8,43 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-class StatsAccumulationEvent {
-    public long timestamp { get; set; }   // e.g. 1709489791 (Unix timestamp in seconds, UTC)
-    public string type { get; set; }      // e.g. "farming" or some PvP/PvE categorization key
-    public string resource { get; set; }  // e.g. "wood" (the resource that was farmed)
-    public int amount { get; set; }       // e.g. 10 (amount of wood farmed)
-    public ulong subject_id { get; set; } // e.g. 76561198135242017 (ID of the other player associated in the event)
+class PlayerEventPvpKill {
+    public ulong timestamp { get; set; }
+
+    /** SteamID of the killer player. */
+    public ulong id_subject { get; set; }
+
+    /** SteamID of the killed player. */
+    public ulong id_object { get; set; }
+
+    /** Some identifier of the weapon. */
+    public string weapon { get; set; }
+    
+    // TODO: Add location information?
+}
+
+class PlayerEventPveDeath {
+    public ulong timestamp { get; set; }
+
+    /** Some identifier of the killer. */
+    public string id_subject { get; set; }
+
+    /** SteamID of the killed player. */
+    public ulong id_object { get; set; }
+    
+    // TODO: Add location information?
+}
+
+class PlayerEventFarming {
+    public ulong timestamp { get; set; }
+
+    /** Some identifier of what was farmed. */
+    public string id_object { get; set; }
+
+    /** How much was farmed. */
+    public int quantity { get; set; }
+    
+    // TODO: Add location information?
 }
 
 /* For reference implementation, see Statistics DB by misticos
@@ -23,20 +54,19 @@ namespace Carbon.Plugins {
     [Info ( "stats_collector", "<jalho>", "0.1.0" )]
     [Description ( "Collect stats about player activity." )]
     public class stats_collector : CarbonPlugin {
-        private readonly ConcurrentDictionary<ulong, List<string>> aggregated_lines;
-        private readonly string stats_dump_dir = @"rds-stats";
+        private readonly List<PlayerEventPvpKill> player_event_pvp_kills = new List<PlayerEventPvpKill>();
+        private readonly List<PlayerEventPveDeath> player_event_pve_deaths = new List<PlayerEventPveDeath>();
+        private readonly List<PlayerEventFarming> player_event_farmings = new List<PlayerEventFarming>();
+        private readonly string dumpfile_player_event_pvp_kills = @"carbon/data/stats_collector/pvp.csv";
+        private readonly string dumpfile_player_event_pve_deaths = @"carbon/data/stats_collector/pve.csv";
+        private readonly string dumpfile_player_event_farmings = @"carbon/data/stats_collector/farming.csv";
         private readonly Timer flush_timer_disk;
 
         // constructor
         public stats_collector() {
-            if (!Directory.Exists(this.stats_dump_dir)) {
-                Directory.CreateDirectory(this.stats_dump_dir);
-                Console.WriteLine("Directory created: {0}", this.stats_dump_dir);
-            } else {
-                Console.WriteLine("Directory already exists: {0}", this.stats_dump_dir);
-            }
-
-            this.aggregated_lines = new ConcurrentDictionary<ulong, List<string>>();
+            stats_collector.init_dump(this.dumpfile_player_event_pvp_kills, "timestamp,killer,killed,weapon\n");
+            stats_collector.init_dump(this.dumpfile_player_event_pve_deaths, "timestamp,killer,killed\n");
+            stats_collector.init_dump(this.dumpfile_player_event_farmings, "timestamp,farm,quantity\n");
 
             this.flush_timer_disk = new Timer(5000);
             this.flush_timer_disk.Elapsed += this.flush_to_disk;
@@ -49,15 +79,15 @@ namespace Carbon.Plugins {
          */
         object OnDispenserGather(ResourceDispenser resource_dispenser, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
-                timestamp = timestamp,
-                type = "farming",
-                resource = item.info.shortname,
-                amount = item.amount,
-            };
-            string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
-            var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            player_lines.Add(gather_event_serialized);
+            // StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
+            //     timestamp = timestamp,
+            //     type = "farming",
+            //     resource = item.info.shortname,
+            //     amount = item.amount,
+            // };
+            // string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
+            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
+            // player_lines.Add(gather_event_serialized);
             return (object) null;
         }
 
@@ -70,15 +100,15 @@ namespace Carbon.Plugins {
          */
         void OnDispenserBonus(ResourceDispenser resource_dispencer, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
-                timestamp = timestamp,
-                type = "farming",
-                resource = item.info.shortname,
-                amount = item.amount,
-            };
-            string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
-            var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            player_lines.Add(gather_event_serialized);
+            // StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
+            //     timestamp = timestamp,
+            //     type = "farming",
+            //     resource = item.info.shortname,
+            //     amount = item.amount,
+            // };
+            // string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
+            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
+            // player_lines.Add(gather_event_serialized);
         }
 
         /**
@@ -91,48 +121,48 @@ namespace Carbon.Plugins {
 
             // PvE death event only
             if (!is_pvp) {
-                StatsAccumulationEvent pve_death_event = new StatsAccumulationEvent {
-                    timestamp = timestamp,
-                    type = "pve-death",
-                    subject_id = killed_player.userID,
-                };
-                string pve_death_event_serialized = JsonConvert.SerializeObject(pve_death_event);
-                var player_lines = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
-                player_lines.Add(pve_death_event_serialized);
+                // StatsAccumulationEvent pve_death_event = new StatsAccumulationEvent {
+                //     timestamp = timestamp,
+                //     type = "pve-death",
+                //     subject_id = killed_player.userID,
+                // };
+                // string pve_death_event_serialized = JsonConvert.SerializeObject(pve_death_event);
+                // var player_lines = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
+                // player_lines.Add(pve_death_event_serialized);
                 return (object) null;
             } else {
                 // case suicide
                 if (killed_player.userID == killer_info.InitiatorPlayer.userID) {
-                    StatsAccumulationEvent suicide_event = new StatsAccumulationEvent {
-                        timestamp = timestamp,
-                        type = "suicide",
-                        subject_id = killed_player.userID,
-                    };
-                    string suicide_event_serialized = JsonConvert.SerializeObject(suicide_event);
-                    var lines = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
-                    lines.Add(suicide_event_serialized);
+                    // StatsAccumulationEvent suicide_event = new StatsAccumulationEvent {
+                    //     timestamp = timestamp,
+                    //     type = "suicide",
+                    //     subject_id = killed_player.userID,
+                    // };
+                    // string suicide_event_serialized = JsonConvert.SerializeObject(suicide_event);
+                    // var lines = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
+                    // lines.Add(suicide_event_serialized);
                     return (object) null;
                 }
 
                 // PvP kill event for killer player
-                StatsAccumulationEvent pvp_kill_event = new StatsAccumulationEvent {
-                    timestamp = timestamp,
-                    type = "pvp-kill",
-                    subject_id = killed_player.userID,
-                };
-                string pvp_kill_event_serialized = JsonConvert.SerializeObject(pvp_kill_event);
-                var lines_killer = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
-                lines_killer.Add(pvp_kill_event_serialized);
+                // StatsAccumulationEvent pvp_kill_event = new StatsAccumulationEvent {
+                //     timestamp = timestamp,
+                //     type = "pvp-kill",
+                //     subject_id = killed_player.userID,
+                // };
+                // string pvp_kill_event_serialized = JsonConvert.SerializeObject(pvp_kill_event);
+                // var lines_killer = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
+                // lines_killer.Add(pvp_kill_event_serialized);
 
                 // PvP death event for killed player
-                StatsAccumulationEvent pvp_death_event = new StatsAccumulationEvent {
-                    timestamp = timestamp,
-                    type = "pvp-death",
-                    subject_id = killer_info.InitiatorPlayer.userID,
-                };
-                string pvp_death_event_serialized = JsonConvert.SerializeObject(pvp_death_event);
-                var lines_killed = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
-                lines_killed.Add(pvp_death_event_serialized);
+                // StatsAccumulationEvent pvp_death_event = new StatsAccumulationEvent {
+                //     timestamp = timestamp,
+                //     type = "pvp-death",
+                //     subject_id = killer_info.InitiatorPlayer.userID,
+                // };
+                // string pvp_death_event_serialized = JsonConvert.SerializeObject(pvp_death_event);
+                // var lines_killed = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
+                // lines_killed.Add(pvp_death_event_serialized);
 
                 return (object) null;
             }
@@ -151,15 +181,15 @@ namespace Carbon.Plugins {
          */
         object OnCollectiblePickup(CollectibleEntity collectible, BasePlayer player, bool eat) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            StatsAccumulationEvent collect_event = new StatsAccumulationEvent {
-                timestamp = timestamp,
-                type = "collecting",
-                resource = collectible.name,
-                amount = 1,
-            };
-            string collect_event_serialized = JsonConvert.SerializeObject(collect_event);
-            var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            player_lines.Add(collect_event_serialized);
+            // StatsAccumulationEvent collect_event = new StatsAccumulationEvent {
+            //     timestamp = timestamp,
+            //     type = "collecting",
+            //     resource = collectible.name,
+            //     amount = 1,
+            // };
+            // string collect_event_serialized = JsonConvert.SerializeObject(collect_event);
+            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
+            // player_lines.Add(collect_event_serialized);
             return (object) null;
         }
 
@@ -177,23 +207,41 @@ namespace Carbon.Plugins {
             var players_lines_flushable = new List<KeyValuePair<ulong, List<string>>>();
 
             // snapshot all player lines to avoid modification during flush
-            foreach (var (player_id, lines) in this.aggregated_lines) {
-                if (lines.Count > 0) {
-                    // copy the list before removing
-                    players_lines_flushable.Add(new KeyValuePair<ulong, List<string>>(player_id, new List<string>(lines)));
-                    // remove the list from the dictionary to avoid concurrent access during flush
-                    this.aggregated_lines.TryRemove(player_id, out _);
-                }
-            }
+            // foreach (var (player_id, lines) in this.aggregated_lines) {
+            //     if (lines.Count > 0) {
+            //         // copy the list before removing
+            //         players_lines_flushable.Add(new KeyValuePair<ulong, List<string>>(player_id, new List<string>(lines)));
+            //         // remove the list from the dictionary to avoid concurrent access during flush
+            //         this.aggregated_lines.TryRemove(player_id, out _);
+            //     }
+            // }
 
             // flush each player's lines separately
-            foreach (var (player_id, lines) in players_lines_flushable) {
-                string file_path = $@"{this.stats_dump_dir}/{player_id}.txt";
-                using (StreamWriter writer = File.AppendText(file_path)) {
-                    foreach (string line in lines) {
-                        writer.WriteLine(line);
-                    }
-                }
+            // foreach (var (player_id, lines) in players_lines_flushable) {
+            //     string file_path = $@"{this.stats_dump_dir}/{player_id}.txt";
+            //     using (StreamWriter writer = File.AppendText(file_path)) {
+            //         foreach (string line in lines) {
+            //             writer.WriteLine(line);
+            //         }
+            //     }
+            // }
+        }
+
+        static void init_dump(string file_path, string initial_content) {
+            stats_collector.create_directory_structure(file_path);
+            stats_collector.create_file_if_not_exists(file_path, initial_content);
+        }
+
+        static void create_directory_structure(string file_path) {
+            string directory_path = Path.GetDirectoryName(file_path);
+            if (!Directory.Exists(directory_path)) {
+                Directory.CreateDirectory(directory_path);
+            }
+        }
+
+        static void create_file_if_not_exists(string file_path, string initial_content) {
+            if (!File.Exists(file_path)) {
+                File.WriteAllText(file_path, initial_content);
             }
         }
 
