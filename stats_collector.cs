@@ -24,6 +24,7 @@ namespace Carbon.Plugins {
         private readonly string stats_dump_dir = @"rds-stats";
         private readonly Timer flush_timer_disk;
 
+        // constructor
         public stats_collector() {
             if (!Directory.Exists(this.stats_dump_dir)) {
                 Directory.CreateDirectory(this.stats_dump_dir);
@@ -35,10 +36,14 @@ namespace Carbon.Plugins {
             this.aggregated_lines = new ConcurrentDictionary<ulong, List<string>>();
 
             this.flush_timer_disk = new Timer(5000);
-            this.flush_timer_disk.Elapsed += FlushAsync;
+            this.flush_timer_disk.Elapsed += this.flush_to_disk;
             this.flush_timer_disk.Start();
         }
 
+        /**
+         * Carbon hook called when a player gathers from a "dispenser", i.e.
+         * e.g. a tree or a stone node.
+         */
         object OnDispenserGather(ResourceDispenser resource_dispenser, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
@@ -54,8 +59,9 @@ namespace Carbon.Plugins {
         }
 
         /**
-         * Hook called e.g. when a player hits a tree for the last time so that
-         * it falls down.
+         * Carbon hook called e.g. when a player hits a tree for the last time
+         * so that it falls down (as opposed to the initial hit, or its
+         * subsequent hits that don't yet fall the tree).
          *
          * Docs: https://docs.carbonmod.gg/docs/core/hooks/resource#ondispenserbonus
          */
@@ -73,7 +79,7 @@ namespace Carbon.Plugins {
         }
 
         /**
-         * Hook called when a player gets killed.
+         * Carbon hook called when a player gets killed.
          */
         object OnPlayerDeath(BasePlayer killed_player, HitInfo killer_info) {
             bool is_pvp = killer_info?.InitiatorPlayer?.userID is ulong;
@@ -123,7 +129,8 @@ namespace Carbon.Plugins {
         }
 
         /**
-         * Hook called e.g. when a player picks up a mushroom or a stump (wood).
+         * Carbon hook called e.g. when a player picks up a mushroom or a stump
+         * (wood).
          */
         object OnCollectiblePickup(CollectibleEntity collectible, BasePlayer player, bool eat) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -139,11 +146,17 @@ namespace Carbon.Plugins {
             return (object) null;
         }
 
+        /**
+         * Called by Carbon to perform any plugin cleanup at unload.
+         */
         void Unload() {
             flush_timer_disk.Stop();
         }
 
-        private void FlushAsync(object sender, ElapsedEventArgs e) {
+        /**
+         * Flush stats collected in memory to disk.
+         */
+        private void flush_to_disk(object sender, ElapsedEventArgs e) {
             var players_lines_flushable = new List<KeyValuePair<ulong, List<string>>>();
 
             // snapshot all player lines to avoid modification during flush
