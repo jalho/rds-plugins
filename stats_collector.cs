@@ -3,12 +3,21 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-class PlayerEventPvpKill {
+class CsvRow {
+    public virtual string to_csv_row() {
+        var properties = this.GetType().GetProperties();
+        var values = properties.Select(prop => prop.GetValue(this)?.ToString() ?? string.Empty);
+        return string.Join(",", values);
+    }
+}
+
+class PlayerEventPvpKill : CsvRow {
     public ulong timestamp { get; set; }
 
     /** SteamID of the killer player. */
@@ -23,7 +32,7 @@ class PlayerEventPvpKill {
     // TODO: Add location information?
 }
 
-class PlayerEventPveDeath {
+class PlayerEventPveDeath : CsvRow {
     public ulong timestamp { get; set; }
 
     /** Some identifier of the killer. */
@@ -35,8 +44,11 @@ class PlayerEventPveDeath {
     // TODO: Add location information?
 }
 
-class PlayerEventFarming {
+class PlayerEventFarming : CsvRow {
     public ulong timestamp { get; set; }
+
+    /** SteamID of the farming player. */
+    public ulong id_subject { get; set; }
 
     /** Some identifier of what was farmed. */
     public string id_object { get; set; }
@@ -54,9 +66,9 @@ namespace Carbon.Plugins {
     [Info ( "stats_collector", "<jalho>", "0.1.0" )]
     [Description ( "Collect stats about player activity." )]
     public class stats_collector : CarbonPlugin {
-        private readonly List<PlayerEventPvpKill> player_event_pvp_kills = new List<PlayerEventPvpKill>();
-        private readonly List<PlayerEventPveDeath> player_event_pve_deaths = new List<PlayerEventPveDeath>();
-        private readonly List<PlayerEventFarming> player_event_farmings = new List<PlayerEventFarming>();
+        private List<PlayerEventPvpKill> player_event_pvp_kills = new List<PlayerEventPvpKill>();
+        private List<PlayerEventPveDeath> player_event_pve_deaths = new List<PlayerEventPveDeath>();
+        private List<PlayerEventFarming> player_event_farmings = new List<PlayerEventFarming>();
         private readonly string dumpfile_player_event_pvp_kills = @"carbon/data/stats_collector/pvp.csv";
         private readonly string dumpfile_player_event_pve_deaths = @"carbon/data/stats_collector/pve.csv";
         private readonly string dumpfile_player_event_farmings = @"carbon/data/stats_collector/farming.csv";
@@ -79,15 +91,13 @@ namespace Carbon.Plugins {
          */
         object OnDispenserGather(ResourceDispenser resource_dispenser, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            // StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
-            //     timestamp = timestamp,
-            //     type = "farming",
-            //     resource = item.info.shortname,
-            //     amount = item.amount,
-            // };
-            // string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
-            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            // player_lines.Add(gather_event_serialized);
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = item.info.shortname,
+                quantity = item.amount,
+            };
+            this.player_event_farmings.Add(farming_event);
             return (object) null;
         }
 
@@ -204,9 +214,21 @@ namespace Carbon.Plugins {
          * Flush stats collected in memory to disk.
          */
         private void flush_to_disk(object sender, ElapsedEventArgs e) {
-            var players_lines_flushable = new List<KeyValuePair<ulong, List<string>>>();
+            var farmings_serialized = new List<string>();
+            if (this.player_event_farmings.Count > 0) {
+                for (int i = 0; i < this.player_event_farmings.Count; i++) {
+                    var farming_event = this.player_event_farmings[0];
+                    var serialized = farming_event.to_csv_row();
+                    farmings_serialized.Add(serialized);
+                    this.player_event_farmings.RemoveAt(0);
+                }
+            }
+            using (StreamWriter writer = File.AppendText(this.dumpfile_player_event_farmings)) {
+                foreach (string line in farmings_serialized) {
+                    writer.WriteLine(line);
+                }
+            }
 
-            // snapshot all player lines to avoid modification during flush
             // foreach (var (player_id, lines) in this.aggregated_lines) {
             //     if (lines.Count > 0) {
             //         // copy the list before removing
