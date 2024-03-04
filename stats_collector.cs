@@ -125,7 +125,6 @@ namespace Carbon.Plugins {
         object OnPlayerDeath(BasePlayer killed_player, HitInfo killer_info) {
             bool is_pvp = killer_info?.InitiatorPlayer?.userID is ulong;
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            string category = is_pvp ? "pvp" : "pve";
 
             if (!is_pvp) {
                 var pve_event = new PlayerEventPveDeath {
@@ -138,14 +137,12 @@ namespace Carbon.Plugins {
             } else {
                 // case suicide
                 if (killed_player.userID == killer_info.InitiatorPlayer.userID) {
-                    // StatsAccumulationEvent suicide_event = new StatsAccumulationEvent {
-                    //     timestamp = timestamp,
-                    //     type = "suicide",
-                    //     subject_id = killed_player.userID,
-                    // };
-                    // string suicide_event_serialized = JsonConvert.SerializeObject(suicide_event);
-                    // var lines = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
-                    // lines.Add(suicide_event_serialized);
+                    var pve_event = new PlayerEventPveDeath {
+                        timestamp = (ulong) timestamp,
+                        id_subject = "suicide",
+                        id_object = killed_player.userID,
+                    };
+                    this.player_event_pve_deaths.Add(pve_event);
                     return (object) null;
                 }
 
