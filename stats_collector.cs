@@ -146,26 +146,13 @@ namespace Carbon.Plugins {
                     return (object) null;
                 }
 
-                // PvP kill event for killer player
-                // StatsAccumulationEvent pvp_kill_event = new StatsAccumulationEvent {
-                //     timestamp = timestamp,
-                //     type = "pvp-kill",
-                //     subject_id = killed_player.userID,
-                // };
-                // string pvp_kill_event_serialized = JsonConvert.SerializeObject(pvp_kill_event);
-                // var lines_killer = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
-                // lines_killer.Add(pvp_kill_event_serialized);
-
-                // PvP death event for killed player
-                // StatsAccumulationEvent pvp_death_event = new StatsAccumulationEvent {
-                //     timestamp = timestamp,
-                //     type = "pvp-death",
-                //     subject_id = killer_info.InitiatorPlayer.userID,
-                // };
-                // string pvp_death_event_serialized = JsonConvert.SerializeObject(pvp_death_event);
-                // var lines_killed = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
-                // lines_killed.Add(pvp_death_event_serialized);
-
+                var pvp_event = new PlayerEventPvpKill {
+                    timestamp = (ulong) timestamp,
+                    id_subject = killer_info.InitiatorPlayer.userID,
+                    id_object = killed_player.userID,
+                    weapon = "TODO: killer weapon here"
+                };
+                this.player_event_pvp_kills.Add(pvp_event);
                 return (object) null;
             }
 
