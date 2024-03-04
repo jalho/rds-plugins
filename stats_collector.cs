@@ -114,39 +114,38 @@ namespace Carbon.Plugins {
          * Carbon hook called when a player gets killed.
          */
         object OnPlayerDeath(BasePlayer killed_player, HitInfo killer_info) {
-            bool is_pvp = killer_info?.InitiatorPlayer?.userID is ulong;
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            string majority_damage_type = killer_info.damageTypes.GetMajorityDamageType().ToString();
-            if (!is_pvp) {
-                var pve_event = new PlayerEventPveDeath {
-                    timestamp = (ulong) timestamp,
-                    id_subject = majority_damage_type,
-                    id_object = killed_player.userID,
-                };
-                this.player_event_pve_deaths.Add(pve_event);
-                return (object) null;
-            } else {
-                // case suicide
-                if (killed_player.userID == killer_info.InitiatorPlayer.userID) {
-                    var pve_event = new PlayerEventPveDeath {
-                        timestamp = (ulong) timestamp,
-                        id_subject = majority_damage_type,
-                        id_object = killed_player.userID,
-                    };
-                    this.player_event_pve_deaths.Add(pve_event);
-                    return (object) null;
-                }
+            bool is_killer_player = killer_info?.InitiatorPlayer?.userID is ulong
+                && !killer_info.InitiatorPlayer.IsNpc;
+            bool is_suicide = is_killer_player
+                && killer_info.InitiatorPlayer.userID == killed_player.userID;
 
-                var pvp_event = new PlayerEventPvpKill {
+            // case PvP
+            if (is_killer_player && !is_suicide) {
+                var death_event = new PlayerEventPvpKill {
                     timestamp = (ulong) timestamp,
                     id_subject = killer_info.InitiatorPlayer.userID,
                     id_object = killed_player.userID,
                 };
-                this.player_event_pvp_kills.Add(pvp_event);
-                return (object) null;
+                this.player_event_pvp_kills.Add(death_event);
             }
-
+            // case PvE
+            else {
+                string majority_damage_type;
+                if (killer_info == null) {
+                    majority_damage_type = "unknown PvE damage"; // ??
+                } else {
+                    majority_damage_type = killer_info.damageTypes.GetMajorityDamageType().ToString();
+                }
+                var death_event = new PlayerEventPveDeath {
+                    timestamp = (ulong) timestamp,
+                    id_subject = majority_damage_type,
+                    id_object = killed_player.userID,
+                };
+                this.player_event_pve_deaths.Add(death_event);
+            }
+            return (object) null;
         }
 
         object OnGrowableGathered(GrowableEntity growable, Item gathered, BasePlayer player) {
