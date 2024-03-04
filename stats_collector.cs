@@ -158,9 +158,15 @@ namespace Carbon.Plugins {
 
         }
 
-        // TODO: Accumulate stats from OnGrowableGather!
-        object OnGrowableGather(GrowableEntity growable_entity) {
-            Puts("OnGrowableGather was called!");
+        object OnGrowableGathered(GrowableEntity growable, Item gathered, BasePlayer player) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = gathered.info.shortname,
+                quantity = gathered.amount,
+            };
+            this.player_event_farmings.Add(farming_event);
             return (object) null;
         }
 
