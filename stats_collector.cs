@@ -67,9 +67,9 @@ namespace Carbon.Plugins {
 
         // constructor
         public stats_collector() {
-            stats_collector.init_dump(this.dumpfile_player_event_pvp_kills, "timestamp,killer,killed,weapon\n");
+            stats_collector.init_dump(this.dumpfile_player_event_pvp_kills, "timestamp,killer,killed\n");
             stats_collector.init_dump(this.dumpfile_player_event_pve_deaths, "timestamp,killer,killed\n");
-            stats_collector.init_dump(this.dumpfile_player_event_farmings, "timestamp,farm,quantity\n");
+            stats_collector.init_dump(this.dumpfile_player_event_farmings, "timestamp,farmer,farm,quantity\n");
 
             this.flush_timer_disk = new Timer(5000);
             this.flush_timer_disk.Elapsed += this.flush_to_disk;
