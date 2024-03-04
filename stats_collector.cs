@@ -60,16 +60,16 @@ namespace Carbon.Plugins {
         private List<PlayerEventPvpKill> player_event_pvp_kills = new List<PlayerEventPvpKill>();
         private List<PlayerEventPveDeath> player_event_pve_deaths = new List<PlayerEventPveDeath>();
         private List<PlayerEventFarming> player_event_farmings = new List<PlayerEventFarming>();
-        private readonly string dumpfile_player_event_pvp_kills = @"carbon/data/stats_collector/pvp.csv";
-        private readonly string dumpfile_player_event_pve_deaths = @"carbon/data/stats_collector/pve.csv";
-        private readonly string dumpfile_player_event_farmings = @"carbon/data/stats_collector/farming.csv";
+        private readonly string dumpfile_player_event_pvp_kills = @"carbon/data/stats_collector/PVP_timestamp-killer-killed.csv";
+        private readonly string dumpfile_player_event_pve_deaths = @"carbon/data/stats_collector/PVE_timestamp-killer-killed.csv";
+        private readonly string dumpfile_player_event_farmings = @"carbon/data/stats_collector/FARMING_timestamp-farmer-farm-quantity.csv";
         private readonly Timer flush_timer_disk;
 
         // constructor
         public stats_collector() {
-            stats_collector.init_dump(this.dumpfile_player_event_pvp_kills, "timestamp,killer,killed\n");
-            stats_collector.init_dump(this.dumpfile_player_event_pve_deaths, "timestamp,killer,killed\n");
-            stats_collector.init_dump(this.dumpfile_player_event_farmings, "timestamp,farmer,farm,quantity\n");
+            stats_collector.init_dump(this.dumpfile_player_event_pvp_kills);
+            stats_collector.init_dump(this.dumpfile_player_event_pve_deaths);
+            stats_collector.init_dump(this.dumpfile_player_event_farmings);
 
             this.flush_timer_disk = new Timer(5000);
             this.flush_timer_disk.Elapsed += this.flush_to_disk;
@@ -240,9 +240,9 @@ namespace Carbon.Plugins {
             }
         }
 
-        static void init_dump(string file_path, string initial_content) {
+        static void init_dump(string file_path) {
             stats_collector.create_directory_structure(file_path);
-            stats_collector.create_file_if_not_exists(file_path, initial_content);
+            stats_collector.create_file_if_not_exists(file_path);
         }
 
         static void create_directory_structure(string file_path) {
@@ -252,9 +252,9 @@ namespace Carbon.Plugins {
             }
         }
 
-        static void create_file_if_not_exists(string file_path, string initial_content) {
+        static void create_file_if_not_exists(string file_path) {
             if (!File.Exists(file_path)) {
-                File.WriteAllText(file_path, initial_content);
+                File.WriteAllText(file_path, "");
             }
         }
 
