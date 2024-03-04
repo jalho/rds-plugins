@@ -250,25 +250,6 @@ namespace Carbon.Plugins {
                     writer.WriteLine(line);
                 }
             }
-
-            // foreach (var (player_id, lines) in this.aggregated_lines) {
-            //     if (lines.Count > 0) {
-            //         // copy the list before removing
-            //         players_lines_flushable.Add(new KeyValuePair<ulong, List<string>>(player_id, new List<string>(lines)));
-            //         // remove the list from the dictionary to avoid concurrent access during flush
-            //         this.aggregated_lines.TryRemove(player_id, out _);
-            //     }
-            // }
-
-            // flush each player's lines separately
-            // foreach (var (player_id, lines) in players_lines_flushable) {
-            //     string file_path = $@"{this.stats_dump_dir}/{player_id}.txt";
-            //     using (StreamWriter writer = File.AppendText(file_path)) {
-            //         foreach (string line in lines) {
-            //             writer.WriteLine(line);
-            //         }
-            //     }
-            // }
         }
 
         static void init_dump(string file_path, string initial_content) {
