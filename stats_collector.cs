@@ -176,15 +176,13 @@ namespace Carbon.Plugins {
          */
         object OnCollectiblePickup(CollectibleEntity collectible, BasePlayer player, bool eat) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            // StatsAccumulationEvent collect_event = new StatsAccumulationEvent {
-            //     timestamp = timestamp,
-            //     type = "collecting",
-            //     resource = collectible.name,
-            //     amount = 1,
-            // };
-            // string collect_event_serialized = JsonConvert.SerializeObject(collect_event);
-            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            // player_lines.Add(collect_event_serialized);
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = collectible.name,
+                quantity = 1,
+            };
+            this.player_event_farmings.Add(farming_event);
             return (object) null;
         }
 
