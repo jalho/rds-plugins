@@ -110,15 +110,13 @@ namespace Carbon.Plugins {
          */
         void OnDispenserBonus(ResourceDispenser resource_dispencer, BasePlayer player, Item item) {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            // StatsAccumulationEvent gather_event = new StatsAccumulationEvent {
-            //     timestamp = timestamp,
-            //     type = "farming",
-            //     resource = item.info.shortname,
-            //     amount = item.amount,
-            // };
-            // string gather_event_serialized = JsonConvert.SerializeObject(gather_event);
-            // var player_lines = this.aggregated_lines.GetOrAdd(player.userID, _ => new List<string>());
-            // player_lines.Add(gather_event_serialized);
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = item.info.shortname,
+                quantity = item.amount,
+            };
+            this.player_event_farmings.Add(farming_event);
         }
 
         /**
@@ -216,12 +214,13 @@ namespace Carbon.Plugins {
         private void flush_to_disk(object sender, ElapsedEventArgs e) {
             var farmings_serialized = new List<string>();
             if (this.player_event_farmings.Count > 0) {
-                for (int i = 0; i < this.player_event_farmings.Count; i++) {
-                    var farming_event = this.player_event_farmings[0];
+                var flush_count = this.player_event_farmings.Count;
+                for (int i = 0; i < flush_count; i++) {
+                    var farming_event = this.player_event_farmings[i];
                     var serialized = farming_event.to_csv_row();
                     farmings_serialized.Add(serialized);
-                    this.player_event_farmings.RemoveAt(0);
                 }
+                this.player_event_farmings.RemoveRange(0, flush_count);
             }
             using (StreamWriter writer = File.AppendText(this.dumpfile_player_event_farmings)) {
                 foreach (string line in farmings_serialized) {
