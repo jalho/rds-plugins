@@ -16,6 +16,9 @@ class StatsAccumulationEvent {
     public ulong subject_id { get; set; } // e.g. 76561198135242017 (ID of the other player associated in the event)
 }
 
+/* For reference implementation, see Statistics DB by misticos
+   https://umod.org/plugins/statistics-db */
+
 namespace Carbon.Plugins {
     [Info ( "stats_collector", "<jalho>", "0.1.0" )]
     [Description ( "Collect stats about player activity." )]
@@ -98,6 +101,19 @@ namespace Carbon.Plugins {
                 player_lines.Add(pve_death_event_serialized);
                 return (object) null;
             } else {
+                // case suicide
+                if (killed_player.userID == killer_info.InitiatorPlayer.userID) {
+                    StatsAccumulationEvent suicide_event = new StatsAccumulationEvent {
+                        timestamp = timestamp,
+                        type = "suicide",
+                        subject_id = killed_player.userID,
+                    };
+                    string suicide_event_serialized = JsonConvert.SerializeObject(suicide_event);
+                    var lines = this.aggregated_lines.GetOrAdd(killer_info.InitiatorPlayer.userID, _ => new List<string>());
+                    lines.Add(suicide_event_serialized);
+                    return (object) null;
+                }
+
                 // PvP kill event for killer player
                 StatsAccumulationEvent pvp_kill_event = new StatsAccumulationEvent {
                     timestamp = timestamp,
@@ -123,6 +139,7 @@ namespace Carbon.Plugins {
 
         }
 
+        // TODO: Accumulate stats from OnGrowableGather!
         object OnGrowableGather(GrowableEntity growable_entity) {
             Puts("OnGrowableGather was called!");
             return (object) null;
