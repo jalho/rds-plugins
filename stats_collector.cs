@@ -25,11 +25,6 @@ class PlayerEventPvpKill : CsvRow {
 
     /** SteamID of the killed player. */
     public ulong id_object { get; set; }
-
-    /** Some identifier of the weapon. */
-    public string weapon { get; set; }
-    
-    // TODO: Add location information?
 }
 
 class PlayerEventPveDeath : CsvRow {
@@ -40,8 +35,6 @@ class PlayerEventPveDeath : CsvRow {
 
     /** SteamID of the killed player. */
     public ulong id_object { get; set; }
-    
-    // TODO: Add location information?
 }
 
 class PlayerEventFarming : CsvRow {
@@ -55,8 +48,6 @@ class PlayerEventFarming : CsvRow {
 
     /** How much was farmed. */
     public int quantity { get; set; }
-    
-    // TODO: Add location information?
 }
 
 /* For reference implementation, see Statistics DB by misticos
@@ -126,10 +117,11 @@ namespace Carbon.Plugins {
             bool is_pvp = killer_info?.InitiatorPlayer?.userID is ulong;
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
+            string majority_damage_type = killer_info.damageTypes.GetMajorityDamageType().ToString();
             if (!is_pvp) {
                 var pve_event = new PlayerEventPveDeath {
                     timestamp = (ulong) timestamp,
-                    id_subject = "TODO: killer identifier here",
+                    id_subject = majority_damage_type,
                     id_object = killed_player.userID,
                 };
                 this.player_event_pve_deaths.Add(pve_event);
@@ -139,7 +131,7 @@ namespace Carbon.Plugins {
                 if (killed_player.userID == killer_info.InitiatorPlayer.userID) {
                     var pve_event = new PlayerEventPveDeath {
                         timestamp = (ulong) timestamp,
-                        id_subject = "suicide",
+                        id_subject = majority_damage_type,
                         id_object = killed_player.userID,
                     };
                     this.player_event_pve_deaths.Add(pve_event);
@@ -150,7 +142,6 @@ namespace Carbon.Plugins {
                     timestamp = (ulong) timestamp,
                     id_subject = killer_info.InitiatorPlayer.userID,
                     id_object = killed_player.userID,
-                    weapon = "TODO: killer weapon here"
                 };
                 this.player_event_pvp_kills.Add(pvp_event);
                 return (object) null;
