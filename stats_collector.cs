@@ -127,16 +127,13 @@ namespace Carbon.Plugins {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string category = is_pvp ? "pvp" : "pve";
 
-            // PvE death event only
             if (!is_pvp) {
-                // StatsAccumulationEvent pve_death_event = new StatsAccumulationEvent {
-                //     timestamp = timestamp,
-                //     type = "pve-death",
-                //     subject_id = killed_player.userID,
-                // };
-                // string pve_death_event_serialized = JsonConvert.SerializeObject(pve_death_event);
-                // var player_lines = this.aggregated_lines.GetOrAdd(killed_player.userID, _ => new List<string>());
-                // player_lines.Add(pve_death_event_serialized);
+                var pve_event = new PlayerEventPveDeath {
+                    timestamp = (ulong) timestamp,
+                    id_subject = "TODO: killer identifier here",
+                    id_object = killed_player.userID,
+                };
+                this.player_event_pve_deaths.Add(pve_event);
                 return (object) null;
             } else {
                 // case suicide
@@ -213,17 +210,53 @@ namespace Carbon.Plugins {
          */
         private void flush_to_disk(object sender, ElapsedEventArgs e) {
             var farmings_serialized = new List<string>();
+            var pvp_kills_serialized = new List<string>();
+            var pve_deaths_serialized = new List<string>();
+
             if (this.player_event_farmings.Count > 0) {
                 var flush_count = this.player_event_farmings.Count;
                 for (int i = 0; i < flush_count; i++) {
-                    var farming_event = this.player_event_farmings[i];
-                    var serialized = farming_event.to_csv_row();
+                    var event_serializable = this.player_event_farmings[i];
+                    var serialized = event_serializable.to_csv_row();
                     farmings_serialized.Add(serialized);
                 }
                 this.player_event_farmings.RemoveRange(0, flush_count);
             }
+
+            if (this.player_event_pvp_kills.Count > 0) {
+                var flush_count = this.player_event_pvp_kills.Count;
+                for (int i = 0; i < flush_count; i++) {
+                    var event_serializable = this.player_event_pvp_kills[i];
+                    var serialized = event_serializable.to_csv_row();
+                    pvp_kills_serialized.Add(serialized);
+                }
+                this.player_event_pvp_kills.RemoveRange(0, flush_count);
+            }
+
+            if (this.player_event_pve_deaths.Count > 0) {
+                var flush_count = this.player_event_pve_deaths.Count;
+                for (int i = 0; i < flush_count; i++) {
+                    var event_serializable = this.player_event_pve_deaths[i];
+                    var serialized = event_serializable.to_csv_row();
+                    pve_deaths_serialized.Add(serialized);
+                }
+                this.player_event_pve_deaths.RemoveRange(0, flush_count);
+            }
+
             using (StreamWriter writer = File.AppendText(this.dumpfile_player_event_farmings)) {
                 foreach (string line in farmings_serialized) {
+                    writer.WriteLine(line);
+                }
+            }
+
+            using (StreamWriter writer = File.AppendText(this.dumpfile_player_event_pvp_kills)) {
+                foreach (string line in pvp_kills_serialized) {
+                    writer.WriteLine(line);
+                }
+            }
+
+            using (StreamWriter writer = File.AppendText(this.dumpfile_player_event_pve_deaths)) {
+                foreach (string line in pve_deaths_serialized) {
                     writer.WriteLine(line);
                 }
             }
