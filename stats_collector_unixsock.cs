@@ -10,9 +10,13 @@ namespace Carbon.Plugins {
     [Description ( "Collect stats about player activity. Emits the stats over Unix domain sockets." )]
     public class stats_collector_unixsock : CarbonPlugin {
         private string plugin_name = "stats_collector_unixsock";
+        private Socket socket = null;
+        private UnixDomainSocketEndPoint endpoint = null;
 
         // constructor
         public stats_collector_unixsock() {
+            this.endpoint = new UnixDomainSocketEndPoint("/tmp/rds-stats-collector.sock");
+            this.socket = new Socket(AddressFamily.Unix, SocketType.Dgram, ProtocolType.Unspecified);
         }
 
         /**
@@ -20,14 +24,14 @@ namespace Carbon.Plugins {
          * [Accessed 2024-04-17]
          */ 
         void OnTick() {
-            this.write_sock("/tmp/rds-stats-collector.sock", "OnTick");
+            this.write_sock("OnTick");
         }
 
         /**
          * Called by Carbon to perform any plugin cleanup at unload.
          */
         public void Unload() {
-           // TODO: Do any socket cleanup here?
+           this.socket.Close();
         }
 
         private void log(string message) {
@@ -35,13 +39,10 @@ namespace Carbon.Plugins {
             System.Console.WriteLine($"[{timestamp_iso}] {this.plugin_name}: {message}");
         }
 
-        private void write_sock(string socket_fs_path, string message) {
-            UnixDomainSocketEndPoint endpoint = new UnixDomainSocketEndPoint(socket_fs_path);
+        private void write_sock(string message) {
             try {
-                using (Socket socket = new Socket(AddressFamily.Unix, SocketType.Dgram, ProtocolType.Unspecified)) {
-                    byte[] data = Encoding.UTF8.GetBytes(message);
-                    socket.SendTo(data, endpoint);
-                }
+                byte[] data = Encoding.UTF8.GetBytes(message);
+                this.socket.SendTo(data, this.endpoint);
             } catch (Exception ex) {
                 this.log($"Error writing to Unix domain socket: {ex.Message}");
             }
