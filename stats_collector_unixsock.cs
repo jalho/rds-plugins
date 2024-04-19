@@ -31,7 +31,7 @@ namespace Carbon.Plugins {
          * Called by Carbon to perform any plugin cleanup at unload.
          */
         public void Unload() {
-           this.socket.Close();
+           this.socket.Dispose();
         }
 
         private void log(string message) {
