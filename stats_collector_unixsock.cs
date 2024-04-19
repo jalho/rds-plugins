@@ -20,8 +20,7 @@ namespace Carbon.Plugins {
          * [Accessed 2024-04-17]
          */ 
         void OnTick() {
-            // this.log("OnTick was called!");
-            this.write_sock("/tmp/asdasd.sock", "hello from tick!");
+            this.write_sock("/tmp/rds-stats-collector.sock", "OnTick");
         }
 
         /**
@@ -39,14 +38,14 @@ namespace Carbon.Plugins {
         private void write_sock(string socket_fs_path, string message) {
             UnixDomainSocketEndPoint endpoint = new UnixDomainSocketEndPoint(socket_fs_path);
             try {
-                using (Socket socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified)) {
-                    socket.Connect(endpoint);
+                using (Socket socket = new Socket(AddressFamily.Unix, SocketType.Dgram, ProtocolType.Unspecified)) {
                     byte[] data = Encoding.UTF8.GetBytes(message);
-                    socket.Send(data);
+                    socket.SendTo(data, endpoint);
                 }
             } catch (Exception ex) {
-                Console.WriteLine($"Error writing to Unix domain socket: {ex.Message}");
+                this.log($"Error writing to Unix domain socket: {ex.Message}");
             }
         }
+
     }
 }
