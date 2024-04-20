@@ -39,7 +39,7 @@ class PlayerEventPvpKill : JSONSerializable {
     public ulong timestamp { get; set; }
 
     /** SteamID of the killer player. */
-    public ulong id_subject { get; set; }
+    public string id_subject { get; set; }
 
     /** SteamID of the killed player. */
     public ulong id_object { get; set; }
@@ -63,7 +63,7 @@ class PlayerEventFarming : JSONSerializable {
     public ulong timestamp { get; set; }
 
     /** SteamID of the farming player. */
-    public ulong id_subject { get; set; }
+    public string id_subject { get; set; }
 
     /** Some identifier of what was farmed. */
     public string id_object { get; set; }
@@ -104,7 +104,7 @@ namespace Carbon.Plugins {
             var farming_event = new PlayerEventFarming {
                 category = Category.Farm,
                 timestamp = (ulong) timestamp,
-                id_subject = player.userID,
+                id_subject = (player.userID).ToString(),
                 id_object = item.info.shortname,
                 quantity = item.amount,
             };
@@ -122,7 +122,7 @@ namespace Carbon.Plugins {
             var farming_event = new PlayerEventFarming {
                 category = Category.Farm,
                 timestamp = (ulong) timestamp,
-                id_subject = player.userID,
+                id_subject = (player.userID).ToString(),
                 id_object = item.info.shortname,
                 quantity = item.amount,
             };
@@ -145,7 +145,7 @@ namespace Carbon.Plugins {
                 var death_event = new PlayerEventPvpKill {
                     category = Category.PvP,
                     timestamp = (ulong) timestamp,
-                    id_subject = killer_info.InitiatorPlayer.userID,
+                    id_subject = killer_info.InitiatorPlayer.userID.ToString(),
                     id_object = killed_player.userID,
                 };
                 this.write_sock(death_event);
@@ -174,7 +174,7 @@ namespace Carbon.Plugins {
             var farming_event = new PlayerEventFarming {
                 category = Category.Farm,
                 timestamp = (ulong) timestamp,
-                id_subject = player.userID,
+                id_subject = (player.userID).ToString(),
                 id_object = gathered.info.shortname,
                 quantity = gathered.amount,
             };
@@ -191,7 +191,7 @@ namespace Carbon.Plugins {
             var farming_event = new PlayerEventFarming {
                 category = Category.Farm,
                 timestamp = (ulong) timestamp,
-                id_subject = player.userID,
+                id_subject = (player.userID).ToString(),
                 id_object = collectible.name,
                 quantity = 1,
             };
