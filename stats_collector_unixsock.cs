@@ -46,6 +46,13 @@ class PlayerEventFarming : JSONSerializable {
     public int quantity { get; set; }
 }
 
+class WorldEvent : JSONSerializable {
+    public ulong timestamp { get; set; }
+
+    /** Some identifier of the event. */
+    public string id_subject { get; set; }
+}
+
 namespace Carbon.Plugins {
     [Info ( "stats_collector_unixsock", "<jalho>", "0.1.0" )]
     [Description ( "Collect stats about player activity. Emits the stats over Unix domain sockets." )]
@@ -73,6 +80,16 @@ namespace Carbon.Plugins {
                 quantity = item.amount,
             };
             this.write_sock(farming_event);
+            return (object) null;
+        }
+
+        object OnCargoShipSpawnCrate(CargoShip self) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var world_event = new WorldEvent {
+                timestamp = (ulong) timestamp,
+                id_subject = "OnCargoShipSpawnCrate",
+            };
+            this.write_sock(world_event);
             return (object) null;
         }
 
