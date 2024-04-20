@@ -42,7 +42,7 @@ class PlayerEventPvpKill : JSONSerializable {
     public string id_subject { get; set; }
 
     /** SteamID of the killed player. */
-    public ulong id_object { get; set; }
+    public string id_object { get; set; }
 }
 
 class PlayerEventPveDeath : JSONSerializable {
@@ -54,7 +54,7 @@ class PlayerEventPveDeath : JSONSerializable {
     public string id_subject { get; set; }
 
     /** SteamID of the killed player. */
-    public ulong id_object { get; set; }
+    public string id_object { get; set; }
 }
 
 class PlayerEventFarming : JSONSerializable {
@@ -146,7 +146,7 @@ namespace Carbon.Plugins {
                     category = Category.PvP,
                     timestamp = (ulong) timestamp,
                     id_subject = killer_info.InitiatorPlayer.userID.ToString(),
-                    id_object = killed_player.userID,
+                    id_object = killed_player.userID.ToString(),
                 };
                 this.write_sock(death_event);
             }
@@ -162,7 +162,7 @@ namespace Carbon.Plugins {
                     category = Category.PvE,
                     timestamp = (ulong) timestamp,
                     id_subject = majority_damage_type,
-                    id_object = killed_player.userID,
+                    id_object = killed_player.userID.ToString(),
                 };
                 this.write_sock(death_event);
             }
