@@ -82,15 +82,15 @@ class WorldEvent : JSONSerializable {
 }
 
 namespace Carbon.Plugins {
-    [Info ( "stats_collector_unixsock", "<jalho>", "0.1.0" )]
-    [Description ( "Collect stats about player activity. Emits the stats over Unix domain sockets." )]
-    public class stats_collector_unixsock : CarbonPlugin {
-        private string plugin_name = "stats_collector_unixsock";
+    [Info ( "activity_sock", "<jalho>", "0.1.0" )]
+    [Description ( "Emit server activity messages over a Unix domain socket." )]
+    public class activity_sock : CarbonPlugin {
+        private string plugin_name = "activity_sock";
         private Socket socket = null;
         private UnixDomainSocketEndPoint endpoint = null;
 
         // constructor
-        public stats_collector_unixsock() {
+        public activity_sock() {
             this.endpoint = new UnixDomainSocketEndPoint("/tmp/rds-stats-collector.sock");
             this.socket = new Socket(AddressFamily.Unix, SocketType.Dgram, ProtocolType.Unspecified);
         }
