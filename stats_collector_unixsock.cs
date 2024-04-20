@@ -84,6 +84,88 @@ namespace Carbon.Plugins {
             return (object) null;
         }
 
+        /**
+         * Carbon hook called e.g. when a player hits a tree for the last time
+         * so that it falls down (as opposed to the initial hit, or its
+         * subsequent hits that don't yet fall the tree).
+         */
+        void OnDispenserBonus(ResourceDispenser resource_dispencer, BasePlayer player, Item item) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = item.info.shortname,
+                quantity = item.amount,
+            };
+            this.write_sock(farming_event);
+        }
+
+        /**
+         * Carbon hook called when a player gets killed.
+         */
+        object OnPlayerDeath(BasePlayer killed_player, HitInfo killer_info) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            bool is_killer_player = killer_info?.InitiatorPlayer?.userID is ulong
+                && !killer_info.InitiatorPlayer.IsNpc;
+            bool is_suicide = is_killer_player
+                && killer_info.InitiatorPlayer.userID == killed_player.userID;
+
+            // case PvP
+            if (is_killer_player && !is_suicide) {
+                var death_event = new PlayerEventPvpKill {
+                    timestamp = (ulong) timestamp,
+                    id_subject = killer_info.InitiatorPlayer.userID,
+                    id_object = killed_player.userID,
+                };
+                this.write_sock(death_event);
+            }
+            // case PvE
+            else {
+                string majority_damage_type;
+                if (killer_info == null) {
+                    majority_damage_type = "unknown PvE damage"; // ??
+                } else {
+                    majority_damage_type = killer_info.damageTypes.GetMajorityDamageType().ToString();
+                }
+                var death_event = new PlayerEventPveDeath {
+                    timestamp = (ulong) timestamp,
+                    id_subject = majority_damage_type,
+                    id_object = killed_player.userID,
+                };
+                this.write_sock(death_event);
+            }
+            return (object) null;
+        }
+
+        object OnGrowableGathered(GrowableEntity growable, Item gathered, BasePlayer player) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = gathered.info.shortname,
+                quantity = gathered.amount,
+            };
+            this.write_sock(farming_event);
+            return (object) null;
+        }
+
+        /**
+         * Carbon hook called e.g. when a player picks up a mushroom or a stump
+         * (wood).
+         */
+        object OnCollectiblePickup(CollectibleEntity collectible, BasePlayer player, bool eat) {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var farming_event = new PlayerEventFarming {
+                timestamp = (ulong) timestamp,
+                id_subject = player.userID,
+                id_object = collectible.name,
+                quantity = 1,
+            };
+            this.write_sock(farming_event);
+            return (object) null;
+        }
+
         object OnCargoShipSpawnCrate(CargoShip self) {
             // this.inspect_object(self);
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
